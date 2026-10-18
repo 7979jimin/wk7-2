@@ -1,0 +1,486 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>분산 반복 유아 영어 단어장</title>
+    <style>
+        @import url('https://fonts.googleapis.com/css2?family=Jua&display=swap');
+
+        body {
+            font-family: 'Jua', sans-serif;
+            background-color: #F0F8FF;
+            margin: 0;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            min-height: 100vh;
+            overflow: hidden;
+            user-select: none;
+        }
+
+        #app {
+            width: 100%;
+            max-width: 600px;
+            text-align: center;
+            padding: 20px;
+            box-sizing: border-box;
+            background: white;
+            border-radius: 30px;
+            box-shadow: 0 20px 40px rgba(0,0,0,0.1);
+            position: relative;
+        }
+
+        .screen { display: none; flex-direction: column; align-items: center; }
+        .screen.active { display: flex; animation: fadeIn 0.5s; }
+
+        @keyframes fadeIn {
+            from { opacity: 0; transform: translateY(10px); }
+            to { opacity: 1; transform: translateY(0); }
+        }
+
+        h1 {
+            color: #FF6B6B;
+            font-size: 2.2rem;
+            margin-bottom: 10px;
+        }
+
+        .subtitle {
+            color: #4ECDC4;
+            font-size: 1.2rem;
+            margin-bottom: 30px;
+        }
+
+        /* 버튼 스타일 */
+        .btn {
+            font-family: 'Jua', sans-serif;
+            font-size: 1.5rem;
+            padding: 15px 40px;
+            border: none;
+            border-radius: 50px;
+            cursor: pointer;
+            color: white;
+            background-color: #4ECDC4;
+            box-shadow: 0 6px 0 #3B9B94;
+            transition: all 0.1s;
+            margin-top: 20px;
+        }
+        .btn:active {
+            transform: translateY(6px);
+            box-shadow: 0 0 0 #3B9B94;
+        }
+        .btn-next { background-color: #FFA07A; box-shadow: 0 6px 0 #E07B55; }
+
+        /* 학습 카드 스타일 */
+        .card {
+            background-color: #FFF9E6;
+            border-radius: 40px;
+            padding: 40px 20px;
+            width: 100%;
+            max-width: 300px;
+            box-shadow: 0 10px 20px rgba(0,0,0,0.05);
+            margin: 20px 0;
+            cursor: pointer;
+            border: 4px solid #FFE699;
+        }
+        
+        .emoji { font-size: 8rem; line-height: 1.2; margin: 0; }
+        .word-en { font-size: 3.5rem; color: #333; margin: 10px 0; font-family: 'Comic Sans MS', cursive, sans-serif; }
+        .word-ko { font-size: 1.8rem; color: #777; margin: 0; }
+        .speaker { font-size: 2rem; margin-left: 10px; cursor: pointer; }
+
+        /* 퀴즈 스타일 */
+        .quiz-target {
+            font-size: 4rem;
+            color: #2C3E50;
+            font-family: 'Comic Sans MS', cursive, sans-serif;
+            margin: 20px 0;
+            cursor: pointer;
+            background: #E8F8F5;
+            padding: 10px 40px;
+            border-radius: 30px;
+        }
+        .quiz-options {
+            display: flex;
+            justify-content: center;
+            gap: 15px;
+            width: 100%;
+            flex-wrap: wrap;
+        }
+        .quiz-option {
+            background: white;
+            font-size: 5rem;
+            padding: 20px;
+            border-radius: 30px;
+            box-shadow: 0 8px 15px rgba(0,0,0,0.1);
+            cursor: pointer;
+            transition: transform 0.2s;
+            border: 3px solid #eee;
+            width: 120px;
+            height: 120px;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+        }
+        .quiz-option:hover { transform: scale(1.05); }
+        .quiz-option.wrong {
+            opacity: 0.5;
+            border-color: #FF6B6B;
+            background-color: #FFEAEA;
+            pointer-events: none;
+            animation: shake 0.4s;
+        }
+
+        @keyframes shake {
+            0%, 100% { transform: translateX(0); }
+            25% { transform: translateX(-10px); }
+            50% { transform: translateX(10px); }
+            75% { transform: translateX(-10px); }
+        }
+
+        /* 피드백 애니메이션 */
+        #feedback {
+            position: fixed;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+            font-size: 10rem;
+            display: none;
+            z-index: 1000;
+            pointer-events: none;
+        }
+
+        /* 진행도 */
+        .progress-text {
+            font-size: 1.2rem;
+            color: #888;
+            margin-bottom: 10px;
+        }
+
+        /* 오답 노트 */
+        .wrong-note-list {
+            max-height: 350px;
+            overflow-y: auto;
+            width: 100%;
+            text-align: left;
+            margin-top: 20px;
+            padding: 0 20px;
+            box-sizing: border-box;
+        }
+        .wrong-item {
+            display: flex;
+            align-items: center;
+            background: #FFF0F0;
+            padding: 15px;
+            border-radius: 20px;
+            margin-bottom: 15px;
+            border: 2px solid #FFD6D6;
+        }
+        .wrong-emoji { font-size: 3rem; margin-right: 20px; }
+        .wrong-text { flex-grow: 1; }
+        .wrong-en { font-size: 1.8rem; font-weight: bold; color: #D32F2F; margin: 0; }
+        .wrong-ko { font-size: 1.2rem; color: #555; margin: 0; }
+
+    </style>
+</head>
+<body>
+
+<div id="app">
+    <!-- 시작 화면 -->
+    <div id="start-screen" class="screen active">
+        <h1>🐻 유아 영어 단어 놀이 🍎</h1>
+        <div class="subtitle">반복해서 보고 바로 퀴즈를 풀어요!</div>
+        <div style="font-size: 5rem; margin: 20px 0;">🚀</div>
+        <button class="btn" onclick="startApp()">학습 시작하기</button>
+    </div>
+
+    <!-- 학습 화면 (분산 반복) -->
+    <div id="learn-screen" class="screen">
+        <div class="progress-text" id="learn-progress">그룹 1 학습 중...</div>
+        <div class="subtitle">그림을 보고 소리를 들어보세요!</div>
+        
+        <div class="card" onclick="playCurrentWord()">
+            <div class="emoji" id="learn-emoji">🍎</div>
+            <div class="word-en"><span id="learn-en">Apple</span><span class="speaker">🔊</span></div>
+            <div class="word-ko" id="learn-ko">사과</div>
+        </div>
+        
+        <button class="btn btn-next" onclick="nextLearn()">다음 ▶</button>
+    </div>
+
+    <!-- 퀴즈 화면 -->
+    <div id="quiz-screen" class="screen">
+        <div class="progress-text" id="quiz-progress">그룹 1 퀴즈!</div>
+        <div class="subtitle">글자를 듣고 알맞은 그림을 고르세요!</div>
+        
+        <div class="quiz-target" onclick="playCurrentQuizWord()">
+            <span id="quiz-en">Apple</span> <span class="speaker">🔊</span>
+        </div>
+        
+        <div class="quiz-options" id="quiz-options">
+            <!-- 옵션이 자바스크립트로 들어갑니다 -->
+        </div>
+    </div>
+
+    <!-- 결과 및 오답노트 화면 -->
+    <div id="result-screen" class="screen">
+        <h1>🎉 모든 학습 완료! 🎉</h1>
+        
+        <div id="perfect-score" style="display: none;">
+            <div style="font-size: 6rem; margin: 20px 0;">🏆</div>
+            <div class="subtitle">와! 한 번도 안 틀리고 모두 맞췄어요! 최고예요!</div>
+        </div>
+
+        <div id="wrong-note-container" style="display: none; width: 100%;">
+            <h2 style="color: #FF6B6B; margin-top: 0;">📖 나의 오답 노트</h2>
+            <div class="subtitle">다시 한번 복습해 볼까요?</div>
+            <div class="wrong-note-list" id="wrong-list">
+                <!-- 오답 리스트가 들어갑니다 -->
+            </div>
+        </div>
+
+        <button class="btn" onclick="location.reload()">처음부터 다시하기</button>
+    </div>
+</div>
+
+<div id="feedback"></div>
+
+<script>
+    // 20개의 단어 데이터
+    const allWords = [
+        { id: 1, en: "Apple", ko: "사과", emoji: "🍎" },
+        { id: 2, en: "Banana", ko: "바나나", emoji: "🍌" },
+        { id: 3, en: "Cat", ko: "고양이", emoji: "🐱" },
+        { id: 4, en: "Dog", ko: "강아지", emoji: "🐶" },
+        { id: 5, en: "Fish", ko: "물고기", emoji: "🐟" },
+        { id: 6, en: "Grape", ko: "포도", emoji: "🍇" },
+        { id: 7, en: "Hat", ko: "모자", emoji: "🎩" },
+        { id: 8, en: "Ice cream", ko: "아이스크림", emoji: "🍦" },
+        { id: 9, en: "Juice", ko: "주스", emoji: "🧃" },
+        { id: 10, en: "Lion", ko: "사자", emoji: "🦁" },
+        { id: 11, en: "Monkey", ko: "원숭이", emoji: "🐵" },
+        { id: 12, en: "Pig", ko: "돼지", emoji: "🐷" },
+        { id: 13, en: "Rabbit", ko: "토끼", emoji: "🐰" },
+        { id: 14, en: "Sun", ko: "태양", emoji: "☀️" },
+        { id: 15, en: "Tiger", ko: "호랑이", emoji: "🐯" },
+        { id: 16, en: "Train", ko: "기차", emoji: "🚂" },
+        { id: 17, en: "Umbrella", ko: "우산", emoji: "☂️" },
+        { id: 18, en: "Watermelon", ko: "수박", emoji: "🍉" },
+        { id: 19, en: "Zebra", ko: "얼룩말", emoji: "🦓" },
+        { id: 20, en: "Star", ko: "별", emoji: "⭐" }
+    ];
+
+    // 학습 설정
+    const WORDS_PER_BLOCK = 5; // 한 그룹당 단어 수
+    const TOTAL_BLOCKS = 4;    // 총 4그룹 (4 * 5 = 20단어)
+    const REPETITIONS = 3;     // 분산 반복 횟수 (A,B,C,D,E -> A,B,C,D,E -> A,B,C,D,E)
+
+    let currentBlock = 0;
+    let learnQueue = [];
+    let currentLearnIndex = 0;
+
+    let quizQueue = [];
+    let currentQuizIndex = 0;
+    let isFirstAttempt = true; // 현재 퀴즈 문제의 첫 시도 여부
+
+    let wrongAnswers = new Set(); // 오답 저장용 (id 저장)
+
+    // TTS 읽어주기
+    function speak(text) {
+        if ('speechSynthesis' in window) {
+            window.speechSynthesis.cancel();
+            const utterance = new SpeechSynthesisUtterance(text);
+            utterance.lang = 'en-US';
+            utterance.rate = 0.8; 
+            window.speechSynthesis.speak(utterance);
+        }
+    }
+
+    // 화면 전환
+    function showScreen(id) {
+        document.querySelectorAll('.screen').forEach(s => s.classList.remove('active'));
+        document.getElementById(id).classList.add('active');
+    }
+
+    // 앱 시작
+    function startApp() {
+        currentBlock = 0;
+        wrongAnswers.clear();
+        startBlock(currentBlock);
+    }
+
+    // 블록(그룹) 시작 로직
+    function startBlock(blockIndex) {
+        // 학습 큐 만들기 (Spaced Practice 적용)
+        learnQueue = [];
+        const startIndex = blockIndex * WORDS_PER_BLOCK;
+        const blockWords = allWords.slice(startIndex, startIndex + WORDS_PER_BLOCK);
+
+        // 예: cat, dog, fish, cat, dog, fish, cat, dog, fish 방식
+        for (let r = 0; r < REPETITIONS; r++) {
+            blockWords.forEach(w => learnQueue.push(w));
+        }
+
+        currentLearnIndex = 0;
+        showScreen('learn-screen');
+        updateLearnUI();
+    }
+
+    // 학습 UI 업데이트
+    function updateLearnUI() {
+        const word = learnQueue[currentLearnIndex];
+        document.getElementById('learn-progress').innerText = 
+            `📚 그룹 ${currentBlock + 1} 학습 중 (${currentLearnIndex + 1}/${learnQueue.length})`;
+        
+        document.getElementById('learn-emoji').innerText = word.emoji;
+        document.getElementById('learn-en').innerText = word.en;
+        document.getElementById('learn-ko').innerText = word.ko;
+
+        speak(word.en);
+    }
+
+    function playCurrentWord() {
+        speak(learnQueue[currentLearnIndex].en);
+    }
+
+    function nextLearn() {
+        currentLearnIndex++;
+        if (currentLearnIndex < learnQueue.length) {
+            updateLearnUI();
+        } else {
+            // 해당 블록 학습 완료 -> 바로 퀴즈 시작
+            startQuiz(currentBlock);
+        }
+    }
+
+    // 배열 섞기
+    function shuffle(array) {
+        return array.sort(() => Math.random() - 0.5);
+    }
+
+    // 퀴즈 시작 로직
+    function startQuiz(blockIndex) {
+        const startIndex = blockIndex * WORDS_PER_BLOCK;
+        // 이번 블록의 단어들만 퀴즈 큐에 넣고 섞음
+        quizQueue = shuffle(allWords.slice(startIndex, startIndex + WORDS_PER_BLOCK));
+        currentQuizIndex = 0;
+        
+        showScreen('quiz-screen');
+        updateQuizUI();
+    }
+
+    function updateQuizUI() {
+        isFirstAttempt = true; // 새 문제이므로 첫 시도 초기화
+        const targetWord = quizQueue[currentQuizIndex];
+        
+        document.getElementById('quiz-progress').innerText = 
+            `🎮 그룹 ${currentBlock + 1} 퀴즈! (${currentQuizIndex + 1}/${quizQueue.length})`;
+        document.getElementById('quiz-en').innerText = targetWord.en;
+        
+        speak(targetWord.en);
+
+        // 보기 3개 생성 (정답 1개 + 오답 2개)
+        let options = [targetWord];
+        let distractors = allWords.filter(w => w.id !== targetWord.id);
+        distractors = shuffle(distractors).slice(0, 2);
+        options = shuffle([...options, ...distractors]);
+
+        const optionsContainer = document.getElementById('quiz-options');
+        optionsContainer.innerHTML = '';
+
+        options.forEach(opt => {
+            const btn = document.createElement('div');
+            btn.className = 'quiz-option';
+            btn.innerText = opt.emoji;
+            btn.onclick = () => checkAnswer(opt, targetWord, btn);
+            optionsContainer.appendChild(btn);
+        });
+    }
+
+    function playCurrentQuizWord() {
+        speak(quizQueue[currentQuizIndex].en);
+    }
+
+    // 정답 체크 로직
+    function checkAnswer(selectedWord, targetWord, btnElement) {
+        const feedback = document.getElementById('feedback');
+        
+        if (selectedWord.id === targetWord.id) {
+            // 정답 처리
+            feedback.innerText = "⭕";
+            feedback.style.display = "block";
+            speak("Good job!");
+            
+            setTimeout(() => {
+                feedback.style.display = "none";
+                currentQuizIndex++;
+                if (currentQuizIndex < quizQueue.length) {
+                    updateQuizUI(); // 다음 문제
+                } else {
+                    // 블록 퀴즈 완료 -> 다음 블록으로 가거나 결과창
+                    currentBlock++;
+                    if (currentBlock < TOTAL_BLOCKS) {
+                        startBlock(currentBlock);
+                    } else {
+                        showResult();
+                    }
+                }
+            }, 1000);
+        } else {
+            // 오답 처리
+            feedback.innerText = "❌";
+            feedback.style.display = "block";
+            speak("Try again!");
+            
+            // 틀린 보기 시각적 피드백 (비활성화 및 흔들림)
+            btnElement.classList.add('wrong');
+            
+            // 첫 시도에 틀렸을 때만 오답 노트에 추가
+            if (isFirstAttempt) {
+                wrongAnswers.add(targetWord.id);
+                isFirstAttempt = false;
+            }
+
+            setTimeout(() => {
+                feedback.style.display = "none";
+            }, 800);
+        }
+    }
+
+    // 최종 결과 및 오답노트 화면
+    function showResult() {
+        showScreen('result-screen');
+        
+        if (wrongAnswers.size === 0) {
+            document.getElementById('perfect-score').style.display = 'block';
+            document.getElementById('wrong-note-container').style.display = 'none';
+        } else {
+            document.getElementById('perfect-score').style.display = 'none';
+            document.getElementById('wrong-note-container').style.display = 'flex';
+            document.getElementById('wrong-note-container').style.flexDirection = 'column';
+            document.getElementById('wrong-note-container').style.alignItems = 'center';
+            
+            const listContainer = document.getElementById('wrong-list');
+            listContainer.innerHTML = '';
+            
+            // 저장된 id를 바탕으로 오답 리스트 생성
+            const wrongWords = allWords.filter(w => wrongAnswers.has(w.id));
+            
+            wrongWords.forEach(w => {
+                const item = document.createElement('div');
+                item.className = 'wrong-item';
+                item.innerHTML = `
+                    <div class="wrong-emoji">${w.emoji}</div>
+                    <div class="wrong-text">
+                        <div class="wrong-en">${w.en} <span class="speaker" onclick="speak('${w.en}')">🔊</span></div>
+                        <div class="wrong-ko">${w.ko}</div>
+                    </div>
+                `;
+                listContainer.appendChild(item);
+            });
+        }
+    }
+</script>
+
+</body>
+</html>
